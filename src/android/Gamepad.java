@@ -16,12 +16,15 @@ import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 import android.util.Log;
 import android.view.InputDevice;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnKeyListener;
+import android.view.View.OnGenericMotionListener;
 
 public class Gamepad extends CordovaPlugin {
     
@@ -37,22 +40,30 @@ public class Gamepad extends CordovaPlugin {
 	public void initialize(CordovaInterface cordova, CordovaWebView webView) {
 		super.initialize(cordova, webView);
 		
-		this.map.put("KEYCODE_BUTTON_B", 0);
-		this.map.put("KEYCODE_BUTTON_A", 1);
-		this.map.put("KEYCODE_BUTTON_Y", 2);
-		this.map.put("KEYCODE_BUTTON_X", 3);
+		this.map.put("KEYCODE_BUTTON_A", 0);
+		this.map.put("KEYCODE_BUTTON_B", 1);
+		this.map.put("KEYCODE_BUTTON_Y", 3);
+		this.map.put("KEYCODE_BUTTON_X", 2);
 		this.map.put("KEYCODE_BUTTON_L1", 4);
 		this.map.put("KEYCODE_BUTTON_R1", 5);
 		this.map.put("KEYCODE_BUTTON_L2", 6);
 		this.map.put("KEYCODE_BUTTON_R2", 7);
 		this.map.put("KEYCODE_SPACE", 8);
+		this.map.put("KEYCODE_SELECT", 8);
 		this.map.put("KEYCODE_ENTER", 9);
+		this.map.put("KEYCODE_START", 9);
+		this.map.put("KEYCODE_BUTTON_THUMBL", 10);
+		this.map.put("KEYCODE_BUTTON_THUMBR", 11);
 		this.map.put("KEYCODE_DPAD_UP", 12);
 		this.map.put("KEYCODE_DPAD_DOWN", 13);
 		this.map.put("KEYCODE_DPAD_LEFT", 14);
 		this.map.put("KEYCODE_DPAD_RIGHT", 15);
 		this.map.put("KEYCODE_BACK", 16);
+		this.map.put("KEYCODE_BUTTON_MODE", 16);
 		
+		this.webView.setFocusable(true);
+		this.webView.setFocusableInTouchMode(true);
+		this.webView.requestFocus();
 		
 		this.webView.setOnKeyListener(new OnKeyListener() {
 			
@@ -76,6 +87,83 @@ public class Gamepad extends CordovaPlugin {
         		return true;
         	}
         });
+		this.webView.setOnGenericMotionListener(new OnGenericMotionListener() {
+			public boolean onGenericMotion(View v, MotionEvent event) {
+				if (event.isFromSource(InputDevice.SOURCE_CLASS_JOYSTICK)) {
+					if (event.getAction() == MotionEvent.ACTION_MOVE) {
+						// process the joystick movement...
+						JSONObject data = new JSONObject();
+						JSONArray axes = new JSONArray();
+						try {
+							axes.put(event.getAxisValue(MotionEvent.AXIS_X));
+							axes.put(event.getAxisValue(MotionEvent.AXIS_Y));
+							axes.put(event.getAxisValue(MotionEvent.AXIS_Z));
+							axes.put(event.getAxisValue(MotionEvent.AXIS_RZ));
+							data.put("deviceId", event.getDeviceId());
+							data.put("axes", axes);
+						} catch (JSONException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						self.webView.sendJavascript("cordova.fireWindowEvent('GamepadMotion', " + data.toString() + ");");
+						
+						data = new JSONObject();
+						try {
+							data.put("deviceId", event.getDeviceId());
+							data.put("button", 6);
+							data.put("value", event.getAxisValue(MotionEvent.AXIS_LTRIGGER));
+						} catch (JSONException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						self.webView.sendJavascript("cordova.fireWindowEvent('GamepadMotion', " + data.toString() + ");");
+						
+						data = new JSONObject();
+						try {
+							data.put("deviceId", event.getDeviceId());
+							data.put("button", 7);
+							data.put("value", event.getAxisValue(MotionEvent.AXIS_RTRIGGER));
+						} catch (JSONException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						self.webView.sendJavascript("cordova.fireWindowEvent('GamepadMotion', " + data.toString() + ");");
+						
+						float hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X);
+						float hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
+						try {
+							data = new JSONObject();
+							data.put("deviceId", event.getDeviceId());
+							data.put("button", 14);
+							data.put("value", hatX < 0.0f);
+							self.webView.sendJavascript("cordova.fireWindowEvent('GamepadMotion', " + data.toString() + ");");
+							data = new JSONObject();
+							data.put("deviceId", event.getDeviceId());
+							data.put("button", 15);
+							data.put("value", hatX > 0.0f);
+							self.webView.sendJavascript("cordova.fireWindowEvent('GamepadMotion', " + data.toString() + ");");
+						} catch (JSONException e) {
+						}
+						try {
+							data = new JSONObject();
+							data.put("deviceId", event.getDeviceId());
+							data.put("button", 12);
+							data.put("value", hatY < 0.0f);
+							self.webView.sendJavascript("cordova.fireWindowEvent('GamepadMotion', " + data.toString() + ");");
+							data = new JSONObject();
+							data.put("deviceId", event.getDeviceId());
+							data.put("button", 13);
+							data.put("value", hatY > 0.0f);
+							self.webView.sendJavascript("cordova.fireWindowEvent('GamepadMotion', " + data.toString() + ");");
+						} catch (JSONException e) {
+						}
+					}
+					Log.v("MOTION", event.toString());
+					return true;
+				}
+				return false;
+			}
+		});
         
 		Log.v("GamepadButtons", "initialized");
 	}
@@ -102,6 +190,7 @@ public class Gamepad extends CordovaPlugin {
 			
 			try {
 				data.put("button", this.map.get(KeyEvent.keyCodeToString(keyCode)));
+				data.put("deviceId", event.getDeviceId());
 			} catch (JSONException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
