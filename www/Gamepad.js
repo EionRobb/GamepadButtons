@@ -32,7 +32,7 @@ var GamepadPlugin = function (window, navigator) {
       connected: true,
       timestamp: timestamp(),
       mapping: 'standard',
-      axes: [],
+      axes: [0.0, 0.0, 0.0, 0.0],
       buttons: Array.apply(0, Array(17)).map(function () {
         return GamepadButton();
       })
@@ -73,11 +73,11 @@ var GamepadPlugin = function (window, navigator) {
     return result;
   }
   
-  function isNewGamepad() {
+  function isNewGamepad(e) {
     return !_gamepads.length;
   }
   
-  function addGamepad() {
+  function addGamepad(e) {
     var index = getNextAvailableIndex(),
         gamepad;
     
@@ -107,7 +107,7 @@ var GamepadPlugin = function (window, navigator) {
     // update gamepad
     if (_gamepads[index].buttons[e.button].pressed !== pressed) {
       _gamepads[index].buttons[e.button].pressed = pressed;
-      _gamepads[index].buttons[e.button].value = pressed ? 1 : 0;
+      _gamepads[index].buttons[e.button].value = e.value !== undefined ? e.value : (pressed ? 1 : 0);
       _gamepads[index].buttons.timestamp = timestamp();
 
       cordova.fireWindowEvent('gamepadbutton', {
@@ -123,6 +123,13 @@ var GamepadPlugin = function (window, navigator) {
   
   window.addEventListener('GamepadButtonDown', function (e) {
     buttonHandler(e, true);
+  }, false);
+  
+  window.addEventListener('GamepadMotion', function (e) {
+	if (e.axes)
+	  _gamepads[0].axes = e.axes;
+	else
+	  buttonHandler(e, e.value);
   }, false);
   
   navigator.getGamepads = getGamepads;
